@@ -3,11 +3,12 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from urllib3.packages.six import b
 from time import sleep
+import numpy as np
 
 class Clicker:
 
-    buildings = ["Cursor", "Grandma", "Farm", "Mine", "Factory", "Bank", "Temple", "Wizard tower", "Shipment", "Alchemy lab", "Portal", "Time machine", "Antimatter condenser", "Prism", "Chancemaker", "Fractal engine", "Javascript console", "Idleverse"]
-    x2UpgradeIds = [7, 8, 9, 44, 110, 192, 294, 307, 428, 480, 506, 700]  # Upgrade ID's for grandma x2
+    buildings = np.array(["Cursor", "Grandma", "Farm", "Mine", "Factory", "Bank", "Temple", "Wizard tower", "Shipment", "Alchemy lab", "Portal", "Time machine", "Antimatter condenser", "Prism", "Chancemaker", "Fractal engine", "Javascript console", "Idleverse"])
+    x2UpgradeIds = np.array([7, 8, 9, 44, 110, 192, 294, 307, 428, 480, 506, 700])  # Upgrade ID's for grandma x2
     timeThreshold = 100
 
     clickingRate = 10
@@ -31,7 +32,7 @@ class Clicker:
 
     # Get price of any building
     def getPrice(self, building):
-        for i in range(len(self.buildings)):
+        for i in range(self.buildings.size):
             if self.buildings[i].__contains__(building):
                 return self.driver.execute_script(f'return Game.Objects[\"{self.buildings[i]}\"].bulkPrice')
         
@@ -40,7 +41,7 @@ class Clicker:
 
     # Get cps of any building
     def getCPS(self, building):
-        for i in range(len(self.buildings)):
+        for i in range(self.buildings.size):
             if self.buildings[i].__contains__(building):
                 return self.driver.execute_script(f'return Game.Objects[\"{self.buildings[i]}\"].storedCps')
         
@@ -62,14 +63,14 @@ class Clicker:
             
     
     # Get score of a building
-    def getBuildingScore(self, building):
+    def getBuildingScore(self, building=None):
         return self.getCPS(building) / self.getPrice(building)
 
     # Gives the total amount of buildings
     def getBuildingAmount(self, building): 
-        for i in range(len(self.buildings)):
+        for i in range(self.buildings.size):
 
-            if self.objectList[i].__contains__(building):
+            if self.buildings[i].__contains__(building):
                 return self.driver.execute_script(f'return Game.Objects[\"{self.buildings[i]}\"].amount')
 
     #  Gets upgrade prices  (This function is Charlies)
@@ -79,16 +80,22 @@ class Clicker:
     def getUpgradeScore(self, building, upgradeID):
         return (self.getBuildingAmount(building) * self.getCPS(building) * 2) / self.getUpgradePrice(upgradeID)
 
+    def canBuy(self, upgrade):
+        return self.driver.execute_script(f"return Game.UpgradesById[{upgrade}].canBuy()")
+
+    def giveCookies(self, num):
+        self.driver.execute_script(f'Game.cookies = {num}')
+
     # Choose which building to buy
     def chooseBuilding(self):
 
-        optimalBuildings = []  # If the building is within certain paramaters it will appear here
+        optimalBuildings = np.array([])  # If the building is within certain paramaters it will appear here
         score = 0
 
         # If we can purchase the building in less than timeThreshold and is optimal based off of crabtrees equasion, add it to the optimalBuildings list
-        for i in range(len(self.buildings)):
+        for i in range(self.buildings.size):
             if self.getTimeUntilBuy(f'{self.buildings[i]}') <= self.timeThreshold and self.getBuildingScore(self.buildings[i]) >= score:
-                optimalBuildings.append(self.buildings[i])
+                optimalBuildings = np.append(optimalBuildings, self.buildings[i])
 
                 score = (self.getCPS(self.buildings[i]) / self.getPrice(self.buildings[i]))
 
@@ -98,12 +105,12 @@ class Clicker:
         
         
         try:
-            buildingToClick = f'product{self.buildings.index(optimalBuildings[len(optimalBuildings) - 1])}'  # Get the building with the highest cps to click
+            buildingToClick = f'product{str(np.where(self.buildings == optimalBuildings[optimalBuildings.size - 1])).split("[")[1].split("]")[0]}'  # Get the building with the highest cps to click
 
-            print(f'{optimalBuildings[len(optimalBuildings) - 1]} : {self.getTimeUntilBuy(optimalBuildings[len(optimalBuildings)-1])}')
+            print(f'{optimalBuildings[optimalBuildings.size-1]} : {self.getTimeUntilBuy(optimalBuildings[optimalBuildings.size-1])}')
 
             # Check if we can click it
-            if self.getTimeUntilBuy(optimalBuildings[len(optimalBuildings)-1]) <= 0:
+            if self.getTimeUntilBuy(optimalBuildings[optimalBuildings.size-1]) <= 0:
                 self.driver.find_element_by_id(buildingToClick).click()
         
         except:
@@ -113,13 +120,12 @@ class Clicker:
     # This function is largely based off of crabtrees code
     def getUpgrade(self):
 
-        try:
-            for i in range(len(self.x2UpgradeIds)):
-                upgrade = self.driver.find_element_by_xpath(f'//div[@onclick="Game.UpgradesById[{self.x2UpgradeIds[i]}].click(event);"]')
+        for i in range(self.x2UpgradeIds.size):
 
-                if i in range(0, 12) and self.getUpgradeScore('Grandma', self.x2UpgradeIds[i]) > self.getBuildingScore('grandma'):
-                    print("UPGRADE FOUND")
-                    upgrade.click()
+            if self.canBuy(self.x2UpgradeIds[i]):
+
+                # Is upgrade a grandma?
+                if i in range(0, 12):
+                    self.driver.execute_script(f"Game.UpgradesById[{self.x2UpgradeIds[i]}].buy()")
+                    print("Upgrade Purchased : Grandma")     
         
-        except:
-            pass
