@@ -127,5 +127,8 @@ class Clicker:
                 # Is upgrade a grandma?
                 if i in range(0, 12):
                     self.driver.execute_script(f"Game.UpgradesById[{self.x2UpgradeIds[i]}].buy()")
-                    print("Upgrade Purchased : Grandma")     
+                    print("Upgrade Purchased : Grandma")
+
+            else:
+                break
         
