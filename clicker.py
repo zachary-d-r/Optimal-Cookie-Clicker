@@ -8,7 +8,12 @@ import numpy as np
 class Clicker:
 
     buildings = np.array(["Cursor", "Grandma", "Farm", "Mine", "Factory", "Bank", "Temple", "Wizard tower", "Shipment", "Alchemy lab", "Portal", "Time machine", "Antimatter condenser", "Prism", "Chancemaker", "Fractal engine", "Javascript console", "Idleverse"])
-    x2UpgradeIds = np.array([7, 8, 9, 44, 110, 192, 294, 307, 428, 480, 506, 700])  # Upgrade ID's for grandma x2
+    
+    dtype = [('id', int), ('price', float)]
+    x2UpgradeIds = np.array([[]], dtype=dtype)  # Upgrade ID's for grandma x2
+    numberOfUpgrades = 613
+    
+
     timeThreshold = 100
 
     clickingRate = 10
@@ -23,6 +28,16 @@ class Clicker:
         self.driver.get(URL)  # Open URL In driver
         WebDriverWait(self.driver, 3).until(lambda d: d.find_element_by_tag_name("span"))  # Wait for page to load
         self.driver.implicitly_wait(10)
+
+        for i in range(self.numberOfUpgrades):
+           
+            values = [(0, 1)]
+            #values = [(self.driver.execute_script(f'return Game.UpgradesById[{i}].id'), self.driver.execute_script(f'return Game.UpgradesById[{i}].basePrice'))]
+            np.append(self.x2UpgradeIds, values, axis=0)
+            
+        #np.sort(self.x2UpgradeIds, order='price')
+
+        print(self.x2UpgradeIds)
     
 
     # Return number of cookies player has
@@ -120,15 +135,19 @@ class Clicker:
     # This function is largely based off of crabtrees code
     def getUpgrade(self):
 
+        optimalUpgrades = np.array([self.x2UpgradeIds[0]])
+
         for i in range(self.x2UpgradeIds.size):
 
-            if self.canBuy(self.x2UpgradeIds[i]):
+            if self.getUpgradeScore(self.x2UpgradeIds[i]) > self.getUpgradeScore(optimalUpgrades[optimalUpgrades.size - 1]):
+                np.append(optimalUpgrades, self.x2UpgradeIds[i])
 
-                # Is upgrade a grandma?
-                if i in range(0, 12):
-                    self.driver.execute_script(f"Game.UpgradesById[{self.x2UpgradeIds[i]}].buy()")
-                    print("Upgrade Purchased : Grandma")
+        upgradeToBuy = optimalUpgrades[optimalUpgrades.size-1]
 
-            else:
-                break
+        if self.canBuy(upgradeToBuy):
+
+            # Is upgrade a grandma?
+            self.driver.execute_script(f"Game.UpgradesById[{upgradeToBuy}].buy()")
+            print("Upgrade Purchased : Grandma")
+
         
