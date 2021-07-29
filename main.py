@@ -8,6 +8,7 @@ clicker = c.Clicker()  # Clicker object
 
 def main():
     clicker.clickCookie()
+    clicker.getUpgrade()
     clicker.chooseBuilding()
 
 
